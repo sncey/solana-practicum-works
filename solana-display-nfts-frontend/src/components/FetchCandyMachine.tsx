@@ -1,22 +1,85 @@
-import { useConnection } from "@solana/wallet-adapter-react"
-import { PublicKey } from "@solana/web3.js"
-import { Metaplex } from "@metaplex-foundation/js"
-import { FC, useEffect, useState } from "react"
-import styles from "../styles/custom.module.css"
+import { useConnection } from "@solana/wallet-adapter-react";
+import { PublicKey } from "@solana/web3.js";
+import { Metaplex } from "@metaplex-foundation/js";
+import { FC, useEffect, useState } from "react";
+import styles from "../styles/custom.module.css";
 
 export const FetchCandyMachine: FC = () => {
-  const [candyMachineAddress, setCandyMachineAddress] = useState(null)
-  const [candyMachineData, setCandyMachineData] = useState(null)
-  const [pageItems, setPageItems] = useState(null)
-  const [page, setPage] = useState(1)
+  const [candyMachineAddress, setCandyMachineAddress] = useState(
+    "11111111111111111111111111111111"
+  );
 
-  const fetchCandyMachine = async () => {}
+  const [candyMachineData, setCandyMachineData] = useState(null);
+  const [pageItems, setPageItems] = useState(null);
+  const [page, setPage] = useState(1);
 
-  const getPage = async (page, perPage) => {}
+  const { connection } = useConnection();
 
-  const prev = async () => {}
+  var metaplex = Metaplex.make(connection);
 
-  const next = async () => {}
+  // fetch candymachine by address
+  const fetchCandyMachine = async () => {
+    // Set page to 1 - we wanna be at the first page whenever we fetch a new Candy Machine
+    setPage(1);
+
+    // fetch candymachine data
+    try {
+      const candyMachine = await metaplex
+        .candyMachines()
+        .findByAddress({ address: new PublicKey(candyMachineAddress) })
+        .run();
+
+      setCandyMachineData(candyMachine);
+    } catch (e) {
+      alert("Please submit a valid CMv2 address.");
+    }
+  };
+
+  // paging
+  const getPage = async (page, perPage) => {
+    const pageItems = candyMachineData.items.slice(
+      (page - 1) * perPage,
+      page * perPage
+    );
+
+    // fetch metadata of NFTs for page
+    let nftData = [];
+    for (let i = 0; i < pageItems.length; i++) {
+      let fetchResult = await fetch(pageItems[i].uri);
+      let json = await fetchResult.json();
+      nftData.push(json);
+    }
+
+    // set state
+    setPageItems(nftData);
+  };
+
+  // previous page
+  const prev = async () => {
+    if (page - 1 < 1) {
+      setPage(1);
+    } else {
+      setPage(page - 1);
+    }
+  };
+
+  // next page
+  const next = async () => {
+    setPage(page + 1);
+  };
+
+  // fetch placeholder candy machine on load
+  useEffect(() => {
+    fetchCandyMachine();
+  }, []);
+
+  // fetch metadata for NFTs when page or candy machine changes
+  useEffect(() => {
+    if (!candyMachineData) {
+      return;
+    }
+    getPage(page, 9);
+  }, [candyMachineData, page]);
 
   return (
     <div>
@@ -64,5 +127,5 @@ export const FetchCandyMachine: FC = () => {
         </div>
       )}
     </div>
-  )
-}
+  );
+};
